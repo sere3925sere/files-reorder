@@ -1,0 +1,208 @@
+
+It feels like I can do this in a few days, so it will probably take me a few weeks.
+Today is 2024-02-02, morning.
+
+02-05. Strange, it feels like it took 4 days, but it only took 3? Anyway, yesterday I made this program work (only by manually selecting files), today I made my program receive folder change notifications, hope it will resort files by itself. Tomorrow I will check if it actually works.
+Heh, program is 19 KB right now.
+(From morning of 02-02 to evening of 02-05 there are 4 days. Don't remember if I wrote this in the evening though.)
+
+02-14. Spent last 3 days on adding registry settings.
+
+----------------------
+
+...Upon renaming, we will need to refresh all filenames? ALL of them?
+...Yeah, let's do that, and think about fixing this if it's too slow. Will be less error prone.
+
+...I wonder if using namespace g is a good idea? So you have g::menu instead of gMenu.
+Maybe, but don't bother with this right now.
+
+
+Preface every string with string length.
+
+
+
+--------------------
+I think, for filtered list, instead of array of pointers, I should use array of indexes.
+Just so I can later replace strings in place.
+
+----------------
+TODO:
+In another program,
+replace this:
+if (wing::PeekMessageW(&msg, null, 0, 0, wing::PM_REMOVE)) {
+with this:
+gui.messagePeek
+in your old program, fix-things.
+
+Also, replace this
+if gui.messageINeedWmChar();
+with this
+if (gEdit.mVisible) gui.messageINeedWmChar();
+
+
+
+TODO:
+in fix-things, write in todo that you are doing lazy extension comparison, and it might work not very precise. '.' can be equal to some other symbol or code, and random characters can be equal to other characters. Unicode sure is fun, eh?
+
+
+
+--------------------
+
+* I wonder if I can use HeapSize to get the same number...
+  and how reliable that is.
+wchar* filenameIn = fi->findFileData.cFileName;
+u4 filenameLen = ustr::wcharLen(filenameIn);
+u4 len2 = HeapSize(GetProcessHeap(), 0, filenameIn);
+Getting exception. Allright then.
+
+-----------------
+
+About sorting. I think I'll need to pick a random file, and use creation time of it as a base.
+And actually store i4, difference between it and a base.
+
+Need to create
+void FileIteratorGetFilelist_OnFile_FirstTime(FileIterator::cFileIterator* fi);
+, and then replace pointer at the end of that.
+To pick that mTimeBase and mTimeDiff.
+
+----------------------
+
+I think I'll abandon my clever scheme of this:
+
+	u4 lo = fi->findFileData.ftCreationTime.dwLowDateTime;
+	u4 hi = fi->findFileData.ftCreationTime.dwHighDateTime;
+	gMenu.mTimeBase = (u8(hi) << 32) | lo;
+
+and just do u8. u4 just isn't enough here. And I'm lazy.
+If this is an issue, I'll change algorithm.
+
+File time we're getting is in 1/100000 of a second, or 100 nanoseconds. This is way too much precision, and it seems that windows file explorer rounds it up to seconds anyway before doing sorting.
+
+---------------
+
+You know, I don't really need to use the edit field.
+I have all I need already.
+
+--------------
+
+* Getting CurrentUser/Download folder path through code, instead of hardcoding it somehow?
+
+
+*Getting rid of all ErrorLazy and doing proper error display.
+
+-----------------
+
+I probably wouldn't use edit fields in this program, and no alternative display mode. Just file list, all the time, and nothing except occasional error message?
+
+Home button to go to the top of the list.
+
+Maybe, going up when already on the top will refresh filelist?
+Need to be careful about holding up key down.
+
+I temporarily commented out some code, uncomment them later.
+
+-----------------
+
+Next I need bool Processing, so that holding up key down wouldn't make program to resort again and again.
+
+-------------------
+
+What I might do:
+* Remove cEdit, for a little bit of extra size saving.
+(I use that for path editing though)
+
+-----------------------
+
+
+*I need to reorder filelist, so that new files are at the end, so I don't have to move files around too much.
+(Do that if and when you'll use a better api for monitoring folder changes, right now I just do full reset anyway)
+
+-----------------
+
+* Might want to use a text file for options, so that people don't have to recompile the program every time.
+(Did registry instead. Using registry is better than using file, file would eat too much space due to granularity, plus where user have to store those is an issue)
+
+------------------
+
+*Add sleep before renaming, just in case.
+Half a second is probably enough.
+(Done)
+
+------------------
+
+I'm worried, what should I use, Sleep or WM_TIMER?
+
+If I use Sleep, program will become irresponsive for a bit.
+
+If I use WM_TIMER, I might skip the last update? Though, I don't think that will be the case. And it's not a big deal anyway. I'll see it when it happens.
+
+I also might not use that at all, bug again, I'm worried about firefox creating a file and then writing into it, worried about notification happening twice. Just an extra load on cpu, filtering that giant folder.
+
+You know, I think this problem is solvable by getting rid of that giant folder. Move most files away from it.
+
+Yeah, let's not do anything, and do the most braindead thing.
+
+-----------------------
+
+Not now:
+*Add a text file with path variable.
+something like files-reorder.txt
+That contains this:
+PathRoot=C:/Users/username/Downloads/
+Make this file start with utf-16 le bom.
+Show error if not.
+Show error if doesn't start with PathRoot=
+Show error if path doesn't end with /
+Show error if this folder doesn't exist.
+Show error if files-reorder.txt doesn't exist.
+
+*Show this program to the author of that userscript.
+
+---------------------
+
+Yeah, I need to SetTimer, KillTimer, WM_TIMER...
+
+Done. See, not that scary.
+---------------
+
+Next is, tune your code a bit, make it so it doesn't touch files that don't need reordering.
+Create a second "unsortedList" to copy with sorted list.
+Measure how many files from the end are in wrong order.
+And change only them.
+
+Hm, there might be an issue with that...
+Nah, it'll be fine. Go from the end, pick the first difference, len-i is how many files you need to rename.
+
+Yeah, there might be an issue with that, because sorted files have 1 sec of difference, and unsorted may have who knows how many.
+
+----------------
+
+
+
+gMenu.mNotificationFolderUpdate = win::file::FindFirstChangeNotificationW(gMenu.mPathRoot, false, win::file::FILE_NOTIFY_CHANGE_FILE_NAME);
+
+...this might be a problem...
+if folder doesn't exist.
+
+...Done? Not sure if this will work.
+
+You just need to call this line again whenever your mPathRoot changes.
+LATER.
+
+
+
+
+* Help is kinda halfassedly done right now, program reacts to F1 only in main menu. Fix that maybe.
+* Alignment in gui is kinda chaotic, some menus have space for ">" and some don't.
+
+
+
+
+* Some files still end up in range sometimes, so I need an ability to move those manually somehow.
+Maybe show * instead of > when a file is to be moved up and down.
+* There are most likely bugs in this.
+
+
+* There are mixed tabs and spaces in the code, fix that.
+
+* Check all TODO in the code.
